@@ -1,13 +1,12 @@
-# Script Dinamico di Ricarica Wallbox per Home Assistant
-
 <p align="center">
   <img src="./image/home-assistant-logo.png" alt="Home Assistant Logo" width="150">
 </p>
+# Script Dinamico di Ricarica Wallbox per Home Assistant
+
+<p align="center"> <b> Consiglio l'utilizzo ad utenti "ESPERTI" </b></p>
 
 **Autore:** bpirasATgmailDOTcom
 **Versione:** 2025.10.12
-
-<p align="center"> <b> Consiglio l'utilizzo ad utenti "ESPERTI" </b></p>
 
 ## Descrizione
 
