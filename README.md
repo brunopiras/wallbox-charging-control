@@ -1,34 +1,34 @@
-# Wallbox Dynamic Charging Controller for Home Assistant
+# Script Dinamico di Ricarica Wallbox per Home Assistant
 
-**Author:** bpirasATgmailDOTcom
-**Version:** 2025.10.12
+**Autore:** bpirasATgmailDOTcom
+**Versione:** 2025.10.12
 
-## Description
+## Descrizione
 
-This Python script for Home Assistant provides dynamic control over an EV wallbox, optimizing charging based on real-time data from a photovoltaic (PV) system, a home battery, and overall household consumption. It's designed for users who want to maximize self-consumption of solar energy for EV charging without exporting power to the grid.
+Questo script Python per Home Assistant fornisce un controllo dinamico su una wallbox per veicoli elettrici (EV), ottimizzando la ricarica in base ai dati in tempo reale di un impianto fotovoltaico (FV), una batteria di accumulo domestica e il consumo complessivo dell'abitazione. È pensato per gli utenti che desiderano massimizzare l'autoconsumo di energia solare per la ricarica del proprio veicolo, senza immettere energia in rete.
 
-The script intelligently adjusts the charging current supplied to the EV, taking into account:
-- Total PV power generation.
-- Home battery state of charge (SOC) and its charge/discharge rate.
-- Total household power consumption.
-- Configurable limits to prevent overloading the electrical system.
+Lo script regola intelligentemente la corrente di carica fornita al veicolo, tenendo conto di:
+- Produzione totale di energia fotovoltaica.
+- Stato di carica (SOC) della batteria domestica e sua velocità di carica/scarica.
+- Consumo energetico totale dell'abitazione.
+- Limiti configurabili per prevenire il sovraccarico dell'impianto elettrico.
 
-It is intended to be run via a Home Assistant automation at a frequent interval (e.g., every 45 seconds) to ensure near real-time response to changing conditions.
+Si consiglia di eseguirlo tramite un'automazione di Home Assistant a intervalli frequenti (es. ogni 45 secondi) per garantire una risposta quasi in tempo reale alle mutevoli condizioni.
 
-## Features
-- **Dynamic Power Adjustment**: Automatically sets the wallbox charging current based on available surplus solar power.
-- **Battery-Aware Charging**: Can prioritize charging the home battery or share power between the battery and the EV based on user-defined SOC thresholds.
-- **System Protection**: Monitors total home current and can pause charging to prevent tripping the main breaker.
-- **Configurable**: All entity IDs and key operational parameters are centralized in a `CONFIG` dictionary for easy customization.
-- **Status Sensor**: Creates and updates a dedicated sensor in Home Assistant (`sensor.wallbox_status`) to provide a real-time overview of the charging status, power flows, and decision logic.
-- **Debug Mode**: Includes a debug mode to facilitate troubleshooting.
+## Funzionalità
+- **Regolazione Dinamica della Potenza**: Imposta automaticamente la corrente di carica della wallbox in base all'energia solare in eccesso disponibile.
+- **Ricarica Consapevole della Batteria**: Può dare priorità alla ricarica della batteria di casa o condividere l'energia tra la batteria e il veicolo in base a soglie SOC definite dall'utente.
+- **Protezione del Sistema**: Monitora la corrente totale assorbita dalla casa e può mettere in pausa la ricarica per evitare di far scattare l'interruttore principale.
+- **Configurabile**: Tutti gli ID delle entità e i parametri operativi chiave sono centralizzati in un dizionario `CONFIG` per una facile personalizzazione.
+- **Sensore di Stato**: Crea e aggiorna un sensore dedicato in Home Assistant (`sensor.wallbox_status`) per fornire una panoramica in tempo reale dello stato di ricarica, dei flussi di energia e della logica decisionale.
+- **Modalità Debug**: Include una modalità di debug per facilitare la risoluzione dei problemi.
 
-## Setup
+## Installazione
 
-1.  **Copy the Script**: Place the `wallbox_charging_control.py` script into the `/config/python_scripts/` directory of your Home Assistant installation.
-2.  **Create Helpers**: In Home Assistant, create all the necessary `input_boolean`, `input_number`, and `input_datetime` helpers defined in the `CONFIG` section of the script. These are used to control and monitor the script's behavior (If you want, use package_wallbox.yaml file to create them automatically).
-3.  **Create Template Sensors**: Create any required template sensors that are listed in the `CONFIG` section.
-4.  **Automate Execution**: Create a new automation in Home Assistant that calls the `python_script.wallbox_charging_control` service at a regular interval.
+1.  **Copia lo Script**: Inserisci lo script `wallbox_charging_control.py` nella cartella `/config/python_scripts/` della tua installazione di Home Assistant.
+2.  **Crea gli Helper**: In Home Assistant, crea tutti gli `input_boolean`, `input_number`, e `input_datetime` necessari, definiti nella sezione `CONFIG` dello script. Questi sono usati per controllare e monitorare il comportamento dello script (Se vuoi, puoi usare il file `package_wallbox.yaml` per crearli automaticamente).
+3.  **Crea i Sensori Template**: Crea eventuali sensori template richiesti elencati nella sezione `CONFIG`.
+4.  **Automatizza l'Esecuzione**: Crea una nuova automazione in Home Assistant che chiami il servizio `python_script.wallbox_charging_control` a intervalli regolari.
 
     ```yaml
     alias: "Run Wallbox Charging Control"
