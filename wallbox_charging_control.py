@@ -1,6 +1,6 @@
 """
 'Python_Script Home Assistant per gestione Wallbox con impianto fotovoltaico e batteria senza immissione di corrente in rete.'
-'Autore: [bruno[AT]casapiras.it]'
+'Autore: [bruno[AT]gmail[dot]com'
 'Wallbox Dynamic Controller v2025.10.12'
 Funzionalità Script:
     Lo script utilizza diverse entità di Home Assistant (template o di sistema/integrazioni) per monitorare lo stato della Wallbox.
