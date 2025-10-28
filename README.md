@@ -7,6 +7,8 @@
 **Autore:** bpirasATgmailDOTcom
 **Versione:** 2025.10.12
 
+## Consiglio l'utilizzo di questo script per utenti "ESPERTI"
+
 ## Descrizione
 
 Questo script Python per Home Assistant fornisce un controllo dinamico su una wallbox per veicoli elettrici (EV), ottimizzando la ricarica in base ai dati in tempo reale di un impianto fotovoltaico (FV), una batteria di accumulo domestica e il consumo complessivo dell'abitazione. È pensato per gli utenti che desiderano massimizzare l'autoconsumo di energia solare per la ricarica del proprio veicolo, senza immettere energia in rete.
