@@ -1,0 +1,173 @@
+homeassistant:
+  time_zone: Europe/Rome
+  customize:
+    package.wallbox:
+      version: &v "2025.10.12"
+      data: &data "📅 28/10/2025 - Updated 28/10/2025"
+      info: "Gestione Wallbox e sensori per lo script wallbox"
+      information provided by: "Bruno"
+      links: 
+        web: https://www/
+
+
+      extra_attributes: &extra_attributes
+        version: *v
+        data: *data
+        package: "package_wallbox.yaml"
+        attribution: "Controllo Wallbox"
+
+
+
+#####
+template:
+  - sensor:
+      - name: "Current Timestamp"
+        unique_id: current_timestamp
+        state: "{{ now().timestamp() }}"
+        attributes: 
+          <<: *extra_attributes
+          info: "Sensore Secondi Tag"
+          
+input_boolean:
+  wboxdebug:
+    name: "Attiva/Disattiva Debug Script"
+    icon: "mdi:bug"    
+  wboxforzacharge:
+    name: "Ricarica forzata, ignora i limiti"
+    icon: "mdi:solar-panel"  
+
+input_number:
+  prism_max_current_set:
+    name: "Prism Max Current Set"
+    icon: mdi:current-dc
+    min: 6
+    max: 32
+    step: 1
+    unit_of_measurement: "A"
+    mode: slider
+  ev_target_soc:
+    name: "EV Max Batt SOC Set"
+    icon: mdi:current-dc
+    min: 5
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+  wbox_last_pv_power:
+    name: "Ultima potenza FV"
+    min: 0
+    max: 10000
+    step: 1
+    unit_of_measurement: "W"
+    mode: slider
+
+  wboxmaxhomecurrent:
+    name: "Corrente massima casa (A)"
+    icon: mdi:current-dc
+    min: 16
+    max: 32
+    step: 1
+    unit_of_measurement: "A"
+    mode: slider   
+  battmaxdischarge:
+    name: "Scarica massima batteria consentita (W)"
+    icon: mdi:current-dc
+    min: 100
+    max: 2000
+    step: 100
+    unit_of_measurement: "W"
+    mode: slider
+  wboxminamp:
+    name: "Corrente minima ricarica (A)"
+    icon: mdi:current-dc
+    min: 6
+    max: 32
+    step: 1
+    unit_of_measurement: "A"
+    mode: slider 
+  wboxmaxamp:
+    name: "Corrente massima ricarica (A)"
+    icon: mdi:current-dc
+    min: 6
+    max: 32
+    step: 1
+    unit_of_measurement: "A"
+    mode: slider 
+  wboxsocmin:
+    name: "SOC minimo assoluto per ricarica (%)"
+    icon: mdi:current-dc
+    min: 5
+    max: 95
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider 
+  wboxsocchargepriority:
+    name: "Soglia SOC prioritaria per carica (%)"
+    icon: mdi:current-dc
+    min: 5
+    max: 95
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider 
+  wbox_battery_priority_ratio:
+    name: Quota prioritaria batteria
+    min: 0
+    max: 95
+    step: 5
+    unit_of_measurement: "%"
+    icon: mdi:battery-plus
+  last_wallbox_current:
+    name: Ultima corrente wallbox
+    min: 0
+    max: 32
+    step: 1
+    unit_of_measurement: A
+    mode: box
+  wallbox_batt_protection_cycles:
+    name: Cicli protezione batteria wallbox
+    min: 0
+    max: 10
+    step: 1
+    mode: box
+  wboxelevation:
+    name: "Soglia Elevazione SUN per blocco ricarica (°)"
+    icon: mdi:sun_elevation
+    min: 10
+    max: 90
+    step: 1
+    unit_of_measurement: "°"
+    mode: slider 
+  wboxelevation_rising:
+    name: "Soglia Elevazione SUN mattina per blocco ricarica (°)"
+    icon: mdi:sun_elevation
+    min: 10
+    max: 90
+    step: 1
+    unit_of_measurement: "°"
+    mode: slider 
+  wbox_delay_seconds:
+    name: Ritardo script wallbox (s)
+    min: 30
+    max: 600
+    step: 10
+    unit_of_measurement: s
+    mode: box
+
+input_datetime:
+  wbox_orainizio:
+    name: Ora inizio blocco ricarica
+    has_time: true
+    has_date: false
+
+  wbox_orafine:
+    name: Ora fine blocco ricarica
+    has_time: true
+    has_date: false
+
+  last_wbox_tag:
+    name: Ultimo tag wallbox
+    has_date: true
+    has_time: true
+
+
+

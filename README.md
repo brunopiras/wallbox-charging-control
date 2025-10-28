@@ -26,7 +26,7 @@ It is intended to be run via a Home Assistant automation at a frequent interval 
 ## Setup
 
 1.  **Copy the Script**: Place the `wallbox_charging_control.py` script into the `/config/python_scripts/` directory of your Home Assistant installation.
-2.  **Create Helpers**: In Home Assistant, create all the necessary `input_boolean`, `input_number`, and `input_datetime` helpers defined in the `CONFIG` section of the script. These are used to control and monitor the script's behavior.
+2.  **Create Helpers**: In Home Assistant, create all the necessary `input_boolean`, `input_number`, and `input_datetime` helpers defined in the `CONFIG` section of the script. These are used to control and monitor the script's behavior (If you want, use package_wallbox.yaml file to create them automatically).
 3.  **Create Template Sensors**: Create any required template sensors that are listed in the `CONFIG` section.
 4.  **Automate Execution**: Create a new automation in Home Assistant that calls the `python_script.wallbox_charging_control` service at a regular interval.
 
