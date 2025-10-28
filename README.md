@@ -7,7 +7,7 @@
 **Autore:** bpirasATgmailDOTcom
 **Versione:** 2025.10.12
 
-## Consiglio l'utilizzo di questo script per utenti "ESPERTI"
+<p align="center"> <b> Consiglio l'utilizzo ad utenti "ESPERTI" </b></p>
 
 ## Descrizione
 
