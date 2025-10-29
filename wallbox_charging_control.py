@@ -1,12 +1,14 @@
 """
 'Python_Script Home Assistant per gestione Wallbox con impianto fotovoltaico e batteria senza immissione di corrente in rete.'
 'Autore: [bruno[AT]casapiras.it]'
-'Wallbox Dynamic Controller v2025.10.28'
+'Wallbox Dynamic Controller v2025.10.29'
 Funzionalità Script:
     Lo script utilizza diverse entità di Home Assistant (template o di sistema/integrazioni) per monitorare lo stato della Wallbox.
     Allo stesso tempo riesce a veicolare sulla Wallbox la giusta quantita di corrente tenendo sotto controllo il consummo massimo della casa, 
     la ricarica della batteria FTV e altri valori.
     Viene avviato (dopo essere stato copiato nella cartella /config/python_script) tramite una automazione di Home Assistant ogni X secondi(45 nel mio caso).
+Modifiche 29/10/2025:
+- ✍️ LOGGING: Implementata la funzione di logging warning per alcuni messaggi importanti.
 Modifiche 28/10/2025:
 - FEATURE: Aggiunta logica 'predittiva' che stima la produzione FV potenziale per un avvio più rapido e intelligente.
 - FEATURE: Aggiunta logica 'attiva' per stimolare la produzione FV a batteria carica e surplus nullo.
@@ -83,42 +85,42 @@ def log_debug(message):
         logger.info(message)
 
 def log_always(message):
-    logger.info(message)
+    logger.warning(message)
 
 def get_str(entity_id, default='unavailable'):
     state = hass.states.get(entity_id)
     if state is None:
-        log_debug(f"[Wallbox] Entità {entity_id} non trovata. Ritorno default '{default}'.")
+        log_always(f"[Wallbox] Entità {entity_id} non trovata. Ritorno default '{default}'.")
         return default
     return state.state
 
 def get_float(entity_id, default=0.0, decimals=3):
     state_obj = hass.states.get(entity_id)
     if state_obj is None:
-        log_debug(f"[Wallbox] Entità {entity_id} non trovata. Ritorno default {default}.")
+        log_always(f"[Wallbox] Entità {entity_id} non trovata. Ritorno default {default}.")
         return default
     try:
         return round(float(state_obj.state), decimals)
     except (TypeError, ValueError):
-        log_debug(f"[Wallbox] Valore non numerico per {entity_id}: {state_obj.state} -> uso default {default}")
+        log_always(f"[Wallbox] Valore non numerico per {entity_id}: {state_obj.state} -> uso default {default}")
         return default
 
 def get_float_attr(entity_id, attribute, default=0.0, decimals=3):
     state_obj = hass.states.get(entity_id)
     if state_obj is None:
-        log_debug(f"[Wallbox] Entità {entity_id} non trovata per l'attributo '{attribute}'. Ritorno default {default}.")
+        log_always(f"[Wallbox] Entità {entity_id} non trovata per l'attributo '{attribute}'. Ritorno default {default}.")
         return default
     val = state_obj.attributes.get(attribute)
     try:
         return round(float(val), decimals)
     except (TypeError, ValueError):
-        log_debug(f"[Wallbox] Attributo non numerico per {entity_id}.{attribute}: {val} -> uso default {default}")
+        log_always(f"[Wallbox] Attributo non numerico per {entity_id}.{attribute}: {val} -> uso default {default}")
         return default
 
 def get_attr(entity_id, attribute, default=None):
     state_obj = hass.states.get(entity_id)
     if state_obj is None:
-        log_debug(f"[Wallbox] Entità {entity_id} non trovata per l'attributo '{attribute}'. Ritorno default.")
+        log_always(f"[Wallbox] Entità {entity_id} non trovata per l'attributo '{attribute}'. Ritorno default.")
         return default
     return state_obj.attributes.get(attribute, default)
 
@@ -194,29 +196,29 @@ def determine_pause_reason(state, cfg):
     
     # SCENARIO 1: Carica Forzata
     if state["forzacharge"]:
-        log_always("[Wallbox] 🟢 SCENARIO 1: Carica forzata attiva. Ignoro tutte le pause.")
+        log_debug("[Wallbox] 🟢 SCENARIO 1: Carica forzata attiva. Ignoro tutte le pause.")
         return None
         
     # SCENARIO 2: EV Target Raggiunto
     if state["ev_soc"] >= state["ev_target"]:
-        log_always(f"[Wallbox] ⏸️ SCENARIO 2: EV SOC target raggiunto ({state['ev_soc']:.1f}% >= {state['ev_target']:.1f}%).")
+        log_debug(f"[Wallbox] ⏸️ SCENARIO 2: EV SOC target raggiunto ({state['ev_soc']:.1f}% >= {state['ev_target']:.1f}%).")
         return f"EV SOC target raggiunto ({state['ev_soc']:.1f}%)"
         
     # SCENARIO 3: Consumo Casa Eccessivo
     if state["home_current"] > state["home_max_current"]:
-        log_always(f"[Wallbox] ⏸️ SCENARIO 3: Consumo casa eccessivo ({state['home_current']:.1f}A > {state['home_max_current']:.1f}A).")
+        log_debug(f"[Wallbox] ⏸️ SCENARIO 3: Consumo casa eccessivo ({state['home_current']:.1f}A > {state['home_max_current']:.1f}A).")
         return f"Consumo casa eccessivo: {state['home_current']:.1f}A > {state['home_max_current']:.1f}A"
         
     # SCENARIO 4: Finestra di Pausa (Orari)
     ora_inizio, ora_fine, ora_attuale = state["ora_inizio_pausa"], state["ora_fine_pausa"], state["ora_attuale"]
     if (ora_inizio < ora_fine and ora_inizio <= ora_attuale <= ora_fine) or \
        (ora_inizio > ora_fine and (ora_attuale >= ora_inizio or ora_attuale <= ora_fine)):
-        log_always(f"[Wallbox] ⏸️ SCENARIO 4: Finestra di pausa oraria attiva ({ora_inizio}-{ora_fine}).")
+        log_debug(f"[Wallbox] ⏸️ SCENARIO 4: Finestra di pausa oraria attiva ({ora_inizio}-{ora_fine}).")
         return f"Finestra di pausa attiva ({ora_inizio}-{ora_fine})"
         
     # SCENARIO 5: SOC Batteria Critico
     if state["soc_attuale"] < state["soc_min"]:
-        log_always(f"[Wallbox] ⏸️ SCENARIO 5: SOC batteria critico ({state['soc_attuale']:.1f}% < {state['soc_min']:.1f}%).")
+        log_debug(f"[Wallbox] ⏸️ SCENARIO 5: SOC batteria critico ({state['soc_attuale']:.1f}% < {state['soc_min']:.1f}%).")
         return f"SOC batteria critico: {state['soc_attuale']:.1f}% < {state['soc_min']:.1f}%"
         
     # SCENARIO 6: Protezione Cicli Batteria
@@ -225,7 +227,7 @@ def determine_pause_reason(state, cfg):
         new_cycles = max(0, batt_protection_cycles - 1)
         # ⚡ Mantenuto blocking=True per garantire che il ciclo venga ridotto prima del prossimo trigger
         call_service("input_number", "set_value", {"entity_id": entities["batt_protection_cycles"], "value": new_cycles}, blocking=True)
-        log_always(f"[Wallbox] ⏸️ SCENARIO 6: Protezione batteria attiva ({int(batt_protection_cycles)} -> {new_cycles} cicli rimanenti).")
+        log_debug(f"[Wallbox] ⏸️ SCENARIO 6: Protezione batteria attiva ({int(batt_protection_cycles)} -> {new_cycles} cicli rimanenti).")
         return f"Protezione batteria attiva ({int(batt_protection_cycles)} cicli rimanenti)"
         
     # SCENARIO 7: Nessuna Pausa Forzata da Regole
@@ -239,7 +241,7 @@ def calculate_target_amps(state, cfg):
     
     # SCENARIO 8: Sole Basso (Pre-requisito)
     if state["sun_elevation"] < state["elevation_limit"] and not state["is_rising"]:
-        log_always(f"[Wallbox] ⏸️ SCENARIO 8: Sole basso in discesa ({state['sun_elevation']:.1f}° < {state['elevation_limit']:.1f}°).")
+        log_debug(f"[Wallbox] ⏸️ SCENARIO 8: Sole basso in discesa ({state['sun_elevation']:.1f}° < {state['elevation_limit']:.1f}°).")
         pause_reason = f"Sole basso in discesa ({state['sun_elevation']:.1f}°)"
         
     # SCENARIO 9: Gestione Scarica Batteria Eccessiva (Riduzione Dinamica)
@@ -248,7 +250,7 @@ def calculate_target_amps(state, cfg):
         over_discharge_watts = state["batt_power"] - discharge_limit
         new_target_power = state["wallbox_power"] - over_discharge_watts - 50 # 50W buffer
         
-        log_always(f"[Wallbox] 📉 SCENARIO 9: Scarica batteria eccessiva ({state['batt_power']:.1f}W > {discharge_limit:.1f}W). Riduco PW a {int(new_target_power)}W.")
+        log_debug(f"[Wallbox] 📉 SCENARIO 9: Scarica batteria eccessiva ({state['batt_power']:.1f}W > {discharge_limit:.1f}W). Riduco PW a {int(new_target_power)}W.")
         available_power = new_target_power
         
     # SCENARIO 10-13: Logiche di Calcolo Potenza
@@ -263,7 +265,7 @@ def calculate_target_amps(state, cfg):
             
             stimulus_power = state["pv_potential_secondary"]
             pv_excess_with_stimulus += stimulus_power
-            log_always(f"[Wallbox] 💡 Stimolo Inverter Sec. Aggiungo {stimulus_power:.1f}W (Excess stimolato: {pv_excess_with_stimulus:.1f}W).")
+            log_debug(f"[Wallbox] 💡 Stimolo Inverter Sec. Aggiungo {stimulus_power:.1f}W (Excess stimolato: {pv_excess_with_stimulus:.1f}W).")
 
         effective_excess = pv_excess_with_stimulus
         
@@ -287,13 +289,13 @@ def calculate_target_amps(state, cfg):
         else:
             # SCENARIO 12a: SOC Batteria molto alto (Forza Max)
             if state["soc_attuale"] > params["force_charge_soc_threshold"]:
-                log_always(f"[Wallbox] ⚡ SCENARIO 12a: SOC Batteria molto alto ({state['soc_attuale']:.1f}%). Forzo Max Charge.")
+                log_debug(f"[Wallbox] ⚡ SCENARIO 12a: SOC Batteria molto alto ({state['soc_attuale']:.1f}%). Forzo Max Charge.")
                 if effective_excess >= state["min_wallbox_power"]:
                     available_power = effective_excess
                     log_debug(f"[Wallbox] Max Charge: Uso surplus ({available_power:.1f}W).")
                 else:
                     available_power = state["min_wallbox_power"] 
-                    log_always(f"[Wallbox] Max Charge: Surplus nullo. Avvio carica minima ({available_power:.1f}W) per stimolo.")
+                    log_debug(f"[Wallbox] Max Charge: Surplus nullo. Avvio carica minima ({available_power:.1f}W) per stimolo.")
             # SCENARIO 12b: SOC Normale (Usa l'eccedenza con Margine)
             elif effective_excess >= state["min_wallbox_power"]:
                 safety_margin = effective_excess * params["pv_safety_margin_ratio"]
@@ -334,7 +336,7 @@ def apply_wallbox_state(target_amps, pause_reason, last_amp, cfg):
     
     # SCENARIO 15: Applicazione Pausa
     if pause_reason:
-        log_always(f"[Wallbox] 🛑 SCENARIO 15: Applico Pausa ({pause_reason}). Set Mode: 'paused'.")
+        log_debug(f"[Wallbox] 🛑 SCENARIO 15: Applico Pausa ({pause_reason}). Set Mode: 'paused'.")
         # ⚡ Chiamata non bloccante
         call_service("select", "select_option", {"entity_id": entities["wallbox_set_mode"], "option": "paused"})
         return 0, True, pause_reason
@@ -349,7 +351,7 @@ def apply_wallbox_state(target_amps, pause_reason, last_amp, cfg):
             log_debug(f"[Wallbox] 🔄 SCENARIO 16: Stabilizzazione. Target {target_amps}A, Delta {delta:.1f}A < {params['stabilization_delta_amp']}A. Mantengo {final_amps}A.")
     
     # SCENARIO 17: Applicazione Carica
-    log_always(f"[Wallbox] 🚀 SCENARIO 17: Applico Carica. Corrente finale impostata a {final_amps}A. Set Mode: 'normal'.")
+    log_debug(f"[Wallbox] 🚀 SCENARIO 17: Applico Carica. Corrente finale impostata a {final_amps}A. Set Mode: 'normal'.")
     # ⚡ Chiamate non bloccanti
     call_service("number", "set_value", {"entity_id": entities["wallbox_set_current"], "value": final_amps})
     call_service("input_number", "set_value", {"entity_id": entities["last_wallbox_current"], "value": final_amps})
@@ -361,14 +363,13 @@ def apply_wallbox_state(target_amps, pause_reason, last_amp, cfg):
 DEBUG_MODE = get_str(CONFIG["entities"]["debug_mode"]) == "on"
 # ⚡ Raccolgo il timestamp di inizio per il calcolo della durata
 script_start_timestamp = get_float(CONFIG["entities"]["current_timestamp"], 0)
-log_always(f"[Wallbox] Script AVVIATO v2025.10.28 - Debug: {'ATTIVO' if DEBUG_MODE else 'DISATTIVO'}")
-
+log_debug(f"[Wallbox] Script AVVIATO v2025.10.29 - Debug: {'ATTIVO' if DEBUG_MODE else 'DISATTIVO'}")
 final_amps, pause_mode, pause_reason, state_data = 0, True, "", {}
 
 # CONTROLLO PRELIMINARE: Connettore
 if get_str(CONFIG["entities"]["wallbox_state"]) == "idle":
     pause_reason = "Connettore non collegato"
-    # Cambiato da log_always a log_debug
+    # Cambiato da log_debug a log_debug
     log_debug("[Wallbox] 🔌 Controllo Preliminare: Connettore IDLE.")
 else:
     # CONTROLLO PRELIMINARE: Blocco RFID
@@ -377,7 +378,7 @@ else:
     diff = now_timestamp - last_tag_timestamp if last_tag_timestamp > 0 and now_timestamp > 0 else 0
     if diff < CONFIG["params"]["post_tag_lock_seconds"]:
         pause_reason = f"Blocco post-tag per {int(CONFIG['params']['post_tag_lock_seconds'] - diff)}s"
-        log_always(f"[Wallbox] ⏸️ Controllo Preliminare: Blocco post-tag attivo. Tempo rimanente: {int(CONFIG['params']['post_tag_lock_seconds'] - diff)}s.")
+        log_debug(f"[Wallbox] ⏸️ Controllo Preliminare: Blocco post-tag attivo. Tempo rimanente: {int(CONFIG['params']['post_tag_lock_seconds'] - diff)}s.")
     else:
         state_data = get_system_state(CONFIG)
         
@@ -429,7 +430,7 @@ attributes = {
     "script_duration": round(execution_time, 3),
     "friendly_name": "Wallbox Status",
     "icon": final_icon,
-    "info": "v2025.10.28"
+    "info": "v2025.10.29"
 }
 try:
     hass.states.set(CONFIG["entities"]["status_sensor"], final_state_str, attributes)
