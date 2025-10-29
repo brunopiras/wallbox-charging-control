@@ -33,6 +33,7 @@ Si consiglia di eseguirlo tramite un'automazione di Home Assistant a intervalli 
 ## News
 Modifiche 29/10/2025:
 - ✍️ LOGGING: Implementata la funzione di logging warning per alcuni messaggi importanti.
+
 Modifiche 28/10/2025:
 - FEATURE: Aggiunta logica 'predittiva' che stima la produzione FV potenziale per un avvio più rapido e intelligente.
 - FEATURE: Aggiunta logica 'attiva' per stimolare la produzione FV a batteria carica e surplus nullo.
@@ -43,6 +44,7 @@ Modifiche 28/10/2025:
 - 🚀 MIGLIORIA: Aggiunta logica di logging estesa in *ogni* punto decisionale critico per una diagnostica completa.
 - ⚡ PERFORMANCE: **Ottimizzazione delle chiamate a servizio** rimuovendo `blocking=True` dove non essenziale per evitare rallentamenti del core HA.
 - 🧹 REFACTOR: Semplificazione del calcolo della durata dello script tramite timestamp Unix.
+
 Modifiche 27/10/2025:
 - FIX: Ripristinato lo stato 'Non Collegato' quando la wallbox è in idle, come nel comportamento originale.
 - HOTFIX: Corretto un errore di battitura (typo) che causava il crash dello script.
