@@ -31,6 +31,8 @@ Si consiglia di eseguirlo tramite un'automazione di Home Assistant a intervalli 
 - **Modalità Debug**: Include una modalità di debug per facilitare la risoluzione dei problemi.
 
 ## News
+Modifiche 29/10/2025:
+- ✍️ LOGGING: Implementata la funzione di logging warning per alcuni messaggi importanti.
 Modifiche 28/10/2025:
 - FEATURE: Aggiunta logica 'predittiva' che stima la produzione FV potenziale per un avvio più rapido e intelligente.
 - FEATURE: Aggiunta logica 'attiva' per stimolare la produzione FV a batteria carica e surplus nullo.
