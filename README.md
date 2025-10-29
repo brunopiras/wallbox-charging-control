@@ -1,6 +1,11 @@
 <p align="center">
   <img src="./image/home-assistant-logo.png" alt="Home Assistant Logo" width="150">
 </p>
+<p align="center">
+  <img src="./image/solar.png" alt="Impianto Solare" width="500">
+</p>
+<br>
+
 
 ## Script Dinamico di Ricarica Wallbox per Home Assistant
 
