@@ -6,7 +6,7 @@
 
 
 **Autore:** bpirasATgmailDOTcom
-**Versione:** 2025.10.12
+**Versione:** v2025.10.28
 
 **Attenzione!!** Consiglio l'utilizzo ad utenti "ESPERTI"
 
@@ -29,6 +29,22 @@ Si consiglia di eseguirlo tramite un'automazione di Home Assistant a intervalli 
 - **Configurabile**: Tutti gli ID delle entità e i parametri operativi chiave sono centralizzati in un dizionario `CONFIG` per una facile personalizzazione.
 - **Sensore di Stato**: Crea e aggiorna un sensore dedicato in Home Assistant (`sensor.wallbox_status`) per fornire una panoramica in tempo reale dello stato di ricarica, dei flussi di energia e della logica decisionale.
 - **Modalità Debug**: Include una modalità di debug per facilitare la risoluzione dei problemi.
+
+## News
+Modifiche 28/10/2025:
+- FEATURE: Aggiunta logica 'predittiva' che stima la produzione FV potenziale per un avvio più rapido e intelligente.
+- FEATURE: Aggiunta logica 'attiva' per stimolare la produzione FV a batteria carica e surplus nullo.
+- FIX: Corretta la logica 'MAX CHARGE FORZATA' per utilizzare la potenza FV in eccesso reale invece di un valore fisso.
+- FEATURE: In caso di scarica eccessiva della batteria, la potenza viene ridotta dinamicamente invece di fermare la carica.
+- FEATURE: Aggiunti log di debug dettagliati per tutte le principali decisioni dello script.
+- FEATURE: Implementata logica per stimolare l'avvio del secondo inverter 'dormiente' stimando la sua produzione potenziale e aggiungendola al surplus calcolato.
+- 🚀 MIGLIORIA: Aggiunta logica di logging estesa in *ogni* punto decisionale critico per una diagnostica completa.
+- ⚡ PERFORMANCE: **Ottimizzazione delle chiamate a servizio** rimuovendo `blocking=True` dove non essenziale per evitare rallentamenti del core HA.
+- 🧹 REFACTOR: Semplificazione del calcolo della durata dello script tramite timestamp Unix.
+Modifiche 27/10/2025:
+- FIX: Ripristinato lo stato 'Non Collegato' quando la wallbox è in idle, come nel comportamento originale.
+- HOTFIX: Corretto un errore di battitura (typo) che causava il crash dello script.
+- REFACTORING: Suddivisione della logica in funzioni per migliore leggibilità e manutenibilità.
 
 ## Installazione
 
