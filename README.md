@@ -11,7 +11,7 @@
 
 
 **Autore:** bpirasATgmailDOTcom
-**Versione:** v2025.10.28
+**Versione:** v2025.10.35
 
 **Attenzione!!** Consiglio l'utilizzo ad utenti "ESPERTI"
 
@@ -36,10 +36,22 @@ Si consiglia di eseguirlo tramite un'automazione di Home Assistant a intervalli 
 - **Modalità Debug**: Include una modalità di debug per facilitare la risoluzione dei problemi.
 
 ## News
-Modifiche 29/10/2025:
-- ✍️ LOGGING: Implementata la funzione di logging warning per alcuni messaggi importanti.
+Modifiche 30/10/2025:
 
-Modifiche 28/10/2025:
+- 🆕 FEATURE: **Implementato Margine Dinamico di SOC (Emergenza EV)**. 
+  Se l'EV SOC scende sotto una soglia critica (`input_number.ev_soc_emergenza`), 
+  lo script forza la carica minima (6A) e ignora le pause (Pausa Oraria e SOC Batteria Casa Critico).
+- 🛡️ SAFETY CHECK: Migliorata la lettura del sensore `ev_soc` per prevenire l'attivazione 
+  accidentale della carica di emergenza se il sensore dell'auto non è disponibile (imposta 100% di default).
+- 🚨 CONTROLLO CRITICO: **Aggiunto controllo Grid/Batteria Bassa**. Lo script si ferma e mette in pausa la Wallbox se la rete elettrica è assente e il SOC della batteria è inferiore a `wboxsocmin`. Priorità alla stabilità del carico domestico.
+- 🧹 REFACTOR: Aggiunta la lettura dello stato della Grid nella funzione `get_system_state`.
+- FEATURE: Aggiunta informazione di presenza rete sul sensore Wallbox Status, riviste le infomazioni del sensore e tradotte in linguaggio compresnibile.
+- 🐞 FIX CRITICO: **Corretta la logica di attivazione dello SCENARIO 9** (Scarica batteria eccessiva). Lo scenario ora viene bypassato in presenza di surplus fotovoltaico significativo (pv_excess >= 100W) e SOC batteria alto, evitando la pausa anomala in caso di squilibri di bilanciamento dell'inverter.
+- 🚀 MIGLIORIA: **Migliorata la logica di SCENARIO 14** (Pausa per corrente bassa) per includere la potenza calcolata (`available_power`) nel messaggio di debug, offrendo maggiore chiarezza diagnostica.
+
+Modifiche 29/10/2025:
+
+- ✍️ LOGGING: Implementata la funzione di logging warning per alcuni messaggi importanti.
 - FEATURE: Aggiunta logica 'predittiva' che stima la produzione FV potenziale per un avvio più rapido e intelligente.
 - FEATURE: Aggiunta logica 'attiva' per stimolare la produzione FV a batteria carica e surplus nullo.
 - FIX: Corretta la logica 'MAX CHARGE FORZATA' per utilizzare la potenza FV in eccesso reale invece di un valore fisso.
@@ -51,14 +63,16 @@ Modifiche 28/10/2025:
 - 🧹 REFACTOR: Semplificazione del calcolo della durata dello script tramite timestamp Unix.
 
 Modifiche 27/10/2025:
+
 - FIX: Ripristinato lo stato 'Non Collegato' quando la wallbox è in idle, come nel comportamento originale.
 - HOTFIX: Corretto un errore di battitura (typo) che causava il crash dello script.
 - REFACTORING: Suddivisione della logica in funzioni per migliore leggibilità e manutenibilità.
 
+
 ## Installazione
 
 1.  **Copia lo Script**: Inserisci lo script `wallbox_charging_control.py` nella cartella `/config/python_scripts/` della tua installazione di Home Assistant.
-2.  **Crea gli Helper**: In Home Assistant, crea tutti gli `input_boolean`, `input_number`, e `input_datetime` necessari, definiti nella sezione `CONFIG` dello script. Questi sono usati per controllare e monitorare il comportamento dello script (Se vuoi, puoi usare il file `package_wallbox.yaml` per crearli automaticamente).
+2.  **Crea gli Helper**: In Home Assistant, crea tutti gli `input_boolean`, `input_number`, e `input_datetime` necessari, definiti nella sezione `CONFIG` dello script. Questi sono usati per controllare e monitorare il comportamento dello script (Se vuoi, puoi usare il file `package_wallbox.yaml` per crearli automaticamente da rinominare e inserire nella cartella packages).
 3.  **Crea i Sensori Template**: Crea eventuali sensori template richiesti elencati nella sezione `CONFIG` (se usi il file package, Home Assistant li crea da solo).
 4.  **Automatizza l'Esecuzione**: Crea una nuova automazione in Home Assistant che chiami il servizio `python_script.wallbox_charging_control` a intervalli regolari.
 

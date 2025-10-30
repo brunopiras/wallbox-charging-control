@@ -2,9 +2,9 @@ homeassistant:
   time_zone: Europe/Rome
   customize:
     package.wallbox:
-      version: &v "2025.10.12"
-      data: &data "📅 28/10/2025 - Updated 28/10/2025"
-      info: "Gestione Wallbox e sensori per lo script wallbox"
+      version: &v "2025.10.35"
+      data: &data "📅 28/10/2025 - Updated 30/10/2025"
+      info: "Gestione sensori per lo script wallbox"
       information provided by: "Bruno"
       links: 
         web: https://www/
@@ -18,7 +18,7 @@ homeassistant:
 
 
 
-#####
+#####Utilizzato dallo script per il calcolo del tempo tra due operazioni
 template:
   - sensor:
       - name: "Current Timestamp"
@@ -29,14 +29,26 @@ template:
           info: "Sensore Secondi Tag"
           
 input_boolean:
+#####Attiva Il debug dello script, devi caricare da UI i "registri grezzi"
   wboxdebug:
     name: "Attiva/Disattiva Debug Script"
     icon: "mdi:bug"    
+#####Quando lo attivi ignora le regole bloccanti
   wboxforzacharge:
     name: "Ricarica forzata, ignora i limiti"
     icon: "mdi:solar-panel"  
 
 input_number:
+#####Imposta la soglia minima per attivare la ricarica di emergenza
+  ev_soc_emergenza:    
+    name: "EV SOC Emergenza"
+    icon: mdi:current-dc
+    min: 20
+    max: 40
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider  
+#####Setta il massimo amperaggio che tu decidi di passare alla wallbox
   prism_max_current_set:
     name: "Prism Max Current Set"
     icon: mdi:current-dc
@@ -45,6 +57,7 @@ input_number:
     step: 1
     unit_of_measurement: "A"
     mode: slider
+#####Imposta il SOC target che vuoi raggiungere (EV)
   ev_target_soc:
     name: "EV Max Batt SOC Set"
     icon: mdi:current-dc
@@ -53,6 +66,7 @@ input_number:
     step: 5
     unit_of_measurement: "%"
     mode: slider
+#####Utilizzato dallo script
   wbox_last_pv_power:
     name: "Ultima potenza FV"
     min: 0
@@ -60,7 +74,7 @@ input_number:
     step: 1
     unit_of_measurement: "W"
     mode: slider
-
+#####Imposta la corrente massima che supporta l'interruttore generale dell'impianto
   wboxmaxhomecurrent:
     name: "Corrente massima casa (A)"
     icon: mdi:current-dc
@@ -68,7 +82,8 @@ input_number:
     max: 32
     step: 1
     unit_of_measurement: "A"
-    mode: slider   
+    mode: slider
+#####Potenza massima che concedi dalla batteria di casa per caricare l'auto   
   battmaxdischarge:
     name: "Scarica massima batteria consentita (W)"
     icon: mdi:current-dc
@@ -77,6 +92,7 @@ input_number:
     step: 100
     unit_of_measurement: "W"
     mode: slider
+#####Corrente minima di ricarica che accetta la wallbox (solitamente 6A)
   wboxminamp:
     name: "Corrente minima ricarica (A)"
     icon: mdi:current-dc
@@ -85,6 +101,7 @@ input_number:
     step: 1
     unit_of_measurement: "A"
     mode: slider 
+#####Corrente massima di ricarica che accetta la wallbox (solitamente 32A)
   wboxmaxamp:
     name: "Corrente massima ricarica (A)"
     icon: mdi:current-dc
@@ -93,6 +110,7 @@ input_number:
     step: 1
     unit_of_measurement: "A"
     mode: slider 
+#####Soglia minina della batteria di casa sotto il quale non si applicano logiche (tranne emergenza)
   wboxsocmin:
     name: "SOC minimo assoluto per ricarica (%)"
     icon: mdi:current-dc
@@ -101,6 +119,7 @@ input_number:
     step: 5
     unit_of_measurement: "%"
     mode: slider 
+#####Soglia intermedia tra minimo e questa viene suddivisa la potenza tra batteria casa e auto
   wboxsocchargepriority:
     name: "Soglia SOC prioritaria per carica (%)"
     icon: mdi:current-dc
@@ -109,6 +128,7 @@ input_number:
     step: 5
     unit_of_measurement: "%"
     mode: slider 
+#####Percentuale di divisione della potenza inerente "wboxsocchargepriority"
   wbox_battery_priority_ratio:
     name: Quota prioritaria batteria
     min: 0
@@ -116,6 +136,7 @@ input_number:
     step: 5
     unit_of_measurement: "%"
     icon: mdi:battery-plus
+#####Utilizzato dallo script
   last_wallbox_current:
     name: Ultima corrente wallbox
     min: 0
@@ -123,12 +144,14 @@ input_number:
     step: 1
     unit_of_measurement: A
     mode: box
+#####Utilizzato dallo script
   wallbox_batt_protection_cycles:
     name: Cicli protezione batteria wallbox
     min: 0
     max: 10
     step: 1
     mode: box
+#####Elevazione solare sotto il quale lo script blocca la ricarica tranne che in emergenza
   wboxelevation:
     name: "Soglia Elevazione SUN per blocco ricarica (°)"
     icon: mdi:sun_elevation
@@ -136,7 +159,8 @@ input_number:
     max: 90
     step: 1
     unit_of_measurement: "°"
-    mode: slider 
+    mode: slider
+#####Elevazione Mattutina per far partire la ricarica tranne che in emergenza 
   wboxelevation_rising:
     name: "Soglia Elevazione SUN mattina per blocco ricarica (°)"
     icon: mdi:sun_elevation
@@ -145,6 +169,7 @@ input_number:
     step: 1
     unit_of_measurement: "°"
     mode: slider 
+#####Serve allo script
   wbox_delay_seconds:
     name: Ritardo script wallbox (s)
     min: 30
@@ -154,16 +179,17 @@ input_number:
     mode: box
 
 input_datetime:
+#####Ora inizio blocco della ricarica tranne che in emergenza
   wbox_orainizio:
     name: Ora inizio blocco ricarica
     has_time: true
     has_date: false
-
+#####Ora fine blocco della ricarica tranne che in emergenza
   wbox_orafine:
     name: Ora fine blocco ricarica
     has_time: true
     has_date: false
-
+#####Se utilizzi tag rfid per terminare la ricarica, non la fa partire per 180 secondi dopo l'utilizzo del tag
   last_wbox_tag:
     name: Ultimo tag wallbox
     has_date: true

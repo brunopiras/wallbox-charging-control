@@ -1,15 +1,25 @@
 """
 'Python_Script Home Assistant per gestione Wallbox con impianto fotovoltaico e batteria senza immissione di corrente in rete.'
 'Autore: [bruno[AT]casapiras.it]'
-'Wallbox Dynamic Controller v2025.10.29'
+'Wallbox Dynamic Controller v2025.10.35'
 Funzionalità Script:
     Lo script utilizza diverse entità di Home Assistant (template o di sistema/integrazioni) per monitorare lo stato della Wallbox.
     Allo stesso tempo riesce a veicolare sulla Wallbox la giusta quantita di corrente tenendo sotto controllo il consummo massimo della casa, 
     la ricarica della batteria FTV e altri valori.
     Viene avviato (dopo essere stato copiato nella cartella /config/python_script) tramite una automazione di Home Assistant ogni X secondi(45 nel mio caso).
+Modifiche 30/10/2025:
+- 🆕 FEATURE: **Implementato Margine Dinamico di SOC (Emergenza EV)**. 
+  Se l'EV SOC scende sotto una soglia critica (`input_number.ev_soc_emergenza`), 
+  lo script forza la carica minima (6A) e ignora le pause (Pausa Oraria e SOC Batteria Casa Critico).
+- 🛡️ SAFETY CHECK: Migliorata la lettura del sensore `ev_soc` per prevenire l'attivazione 
+  accidentale della carica di emergenza se il sensore dell'auto non è disponibile (imposta 100% di default).
+- 🚨 CONTROLLO CRITICO: **Aggiunto controllo Grid/Batteria Bassa**. Lo script si ferma e mette in pausa la Wallbox se la rete elettrica è assente e il SOC della batteria è inferiore a `wboxsocmin`. Priorità alla stabilità del carico domestico.
+- 🧹 REFACTOR: Aggiunta la lettura dello stato della Grid nella funzione `get_system_state`.
+- FEATURE: Aggiunta informazione di presenza rete sul sensore Wallbox Status, riviste le infomazioni del sensore e tradotte in linguaggio compresnibile.
+- 🐞 FIX CRITICO: **Corretta la logica di attivazione dello SCENARIO 9** (Scarica batteria eccessiva). Lo scenario ora viene bypassato in presenza di surplus fotovoltaico significativo (pv_excess >= 100W) e SOC batteria alto, evitando la pausa anomala in caso di squilibri di bilanciamento dell'inverter.
+- 🚀 MIGLIORIA: **Migliorata la logica di SCENARIO 14** (Pausa per corrente bassa) per includere la potenza calcolata (`available_power`) nel messaggio di debug, offrendo maggiore chiarezza diagnostica.
 Modifiche 29/10/2025:
 - ✍️ LOGGING: Implementata la funzione di logging warning per alcuni messaggi importanti.
-Modifiche 28/10/2025:
 - FEATURE: Aggiunta logica 'predittiva' che stima la produzione FV potenziale per un avvio più rapido e intelligente.
 - FEATURE: Aggiunta logica 'attiva' per stimolare la produzione FV a batteria carica e surplus nullo.
 - FIX: Corretta la logica 'MAX CHARGE FORZATA' per utilizzare la potenza FV in eccesso reale invece di un valore fisso.
@@ -54,7 +64,8 @@ CONFIG = {
         "home_max_current": "input_number.wboxmaxhomecurrent",                      #<-Number Corrente massima che l'impianto di casa puo' assorbire (comprende ovviamente anche la Wallbox)<># 
         "wallbox_power": "sensor.silla_prism_output_power",                         #<-Sensore Wallbox PW erogata<>#  
         "ev_soc": "sensor.ev3_ev_battery_level",                                    #<-Sensore Kia SOC Auto (si aggiorna circa ogni 15min)<>#
-        "ev_target_soc": "input_number.ev_target_soc",                              #<-Number Target di ricarica Batteria Kia<>#      
+        "ev_target_soc": "input_number.ev_target_soc",                              #<-Number Target di ricarica Batteria Kia<>#
+        "ev_soc_emergenza": "input_number.ev_soc_emergenza",                        #<-Number SOC Auto sotto il quale forzare 6A<>#
         "time": "sensor.time",                                                      #<-Sensore Tempo (HH:MM)<>#    
         "pause_start_time": "input_datetime.wbox_orainizio",                        #<-Input Ora e minuti Inizio Pausa Ricarica<>#    
         "pause_end_time": "input_datetime.wbox_orafine",                            #<-Input Ora e minuti Fine Pausa Ricarica<>#      
@@ -64,7 +75,8 @@ CONFIG = {
         "last_wallbox_current": "input_number.last_wallbox_current",                #<-Number Ultima Corrente impostata dallo script<>#
         "date_time_iso": "sensor.date_time_iso",                                    #<-Sensore Template data e ora (per log) <>#
         "last_wbox_tag": "input_datetime.last_wbox_tag",                            #<-Input Ultimo utilizzo TAG Rfid<>#
-        "status_sensor": "sensor.wallbox_status"                                    #<-Sensor Template creato e aggiornato dallo Script<>#  
+        "status_sensor": "sensor.wallbox_status",                                   #<-Sensor Template creato e aggiornato dallo Script<>#  
+        "grid": "binary_sensor.deyeha_grid"                                         #<-Binary Sensor Deye presenza Grid<># 
     },
     "params": {
         "post_tag_lock_seconds": 180,                                               #<-Tempo di blocco dopo l'RFID (Scenario 2)<>#
@@ -174,8 +186,16 @@ def get_system_state(cfg):
     state["home_current"] = get_float(entities["home_current"])
     state["home_max_current"] = get_float(entities["home_max_current"])
     state["pv_excess"] = state["pv_power"] - home_domestic_power
-    state["ev_soc"] = get_float(entities["ev_soc"])
+    
+    # 🛡️ SAFETY CHECK: Lettura sicura del SOC EV. Se non disponibile, ritorna 100.0.
+    # Questo previene l'attivazione della carica di emergenza se il sensore EV è offline (riporta 0).
+    state["ev_soc"] = get_float(entities["ev_soc"], default=100.0)
+    
     state["ev_target"] = get_float(entities["ev_target_soc"])
+    
+    # 🆕 LETTURA: Legge la soglia di emergenza
+    state["ev_soc_emergenza"] = get_float(entities["ev_soc_emergenza"], default=0.0) # Default 0 disattiva la feature
+    
     state["ora_attuale"] = get_str(entities["time"])
     state["ora_inizio_pausa"] = get_str(entities["pause_start_time"], "00:00:00")[:5]
     state["ora_fine_pausa"] = get_str(entities["pause_end_time"], "00:00:00")[:5]
@@ -187,6 +207,9 @@ def get_system_state(cfg):
     state["min_wallbox_power"] = state["min_amp"] * state["voltage"]
     state["batt_priority_ratio"] = get_float(entities["battery_priority_ratio"])
     
+    # 🧹 REFACTOR: Aggiunta la lettura dello stato della Grid
+    state["grid_present"] = get_str(entities["grid"]) == "on" 
+    
     log_debug(f"[Wallbox] STATO: PV Totale={state['pv_power']:.1f}W, Domestico={home_domestic_power:.1f}W, Excess={state['pv_excess']:.1f}W, Batt SOC={state['soc_attuale']:.1f}%, Voltage={state['voltage']:.1f}V")
     return state
 
@@ -194,7 +217,16 @@ def determine_pause_reason(state, cfg):
     entities = cfg["entities"]
     params = cfg["params"]
     
-    # SCENARIO 1: Carica Forzata
+    # 🆕 CONTROLLO EMERGENZA EV (SCENARIO 0)
+    # Controlla se l'EV SOC è valido (non 100 default) ED è sotto la soglia di emergenza
+    # state["ev_soc"] < 99.0 è un controllo di sicurezza aggiuntivo per assicurarsi che il 100.0 di default non attivi mai l'emergenza
+    is_emergency = state["ev_soc"] < state["ev_soc_emergenza"] and state["ev_soc"] < 99.0
+
+    if is_emergency:
+        log_always(f"[Wallbox] ⚠️ SCENARIO 0 (EMERGENZA EV): EV SOC ({state['ev_soc']:.1f}%) < Soglia ({state['ev_soc_emergenza']:.1f}%). Bypasso Pausa Oraria e Pausa SOC Casa.")
+        # Bypassa attivamente SCENARIO 4 (Pausa Oraria) e SCENARIO 5 (SOC Batteria Critico)
+
+    # SCENARIO 1: Carica Forzata (Resta prioritario)
     if state["forzacharge"]:
         log_debug("[Wallbox] 🟢 SCENARIO 1: Carica forzata attiva. Ignoro tutte le pause.")
         return None
@@ -213,13 +245,21 @@ def determine_pause_reason(state, cfg):
     ora_inizio, ora_fine, ora_attuale = state["ora_inizio_pausa"], state["ora_fine_pausa"], state["ora_attuale"]
     if (ora_inizio < ora_fine and ora_inizio <= ora_attuale <= ora_fine) or \
        (ora_inizio > ora_fine and (ora_attuale >= ora_inizio or ora_attuale <= ora_fine)):
-        log_debug(f"[Wallbox] ⏸️ SCENARIO 4: Finestra di pausa oraria attiva ({ora_inizio}-{ora_fine}).")
-        return f"Finestra di pausa attiva ({ora_inizio}-{ora_fine})"
+        
+        if is_emergency: # 🆕 Bypass se emergenza
+             log_debug("[Wallbox] ⚠️ SCENARIO 4 (Bypassato): Pausa oraria ignorata per emergenza EV SOC.")
+        else:
+             log_debug(f"[Wallbox] ⏸️ SCENARIO 4: Finestra di pausa oraria attiva ({ora_inizio}-{ora_fine}).")
+             return f"Finestra di pausa attiva ({ora_inizio}-{ora_fine})"
         
     # SCENARIO 5: SOC Batteria Critico
     if state["soc_attuale"] < state["soc_min"]:
-        log_debug(f"[Wallbox] ⏸️ SCENARIO 5: SOC batteria critico ({state['soc_attuale']:.1f}% < {state['soc_min']:.1f}%).")
-        return f"SOC batteria critico: {state['soc_attuale']:.1f}% < {state['soc_min']:.1f}%"
+        
+        if is_emergency: # 🆕 Bypass se emergenza
+             log_debug("[Wallbox] ⚠️ SCENARIO 5 (Bypassato): SOC batteria critico ignorato per emergenza EV SOC.")
+        else:
+             log_debug(f"[Wallbox] ⏸️ SCENARIO 5: SOC batteria critico ({state['soc_attuale']:.1f}% < {state['soc_min']:.1f}%).")
+             return f"SOC batteria critico: {state['soc_attuale']:.1f}% < {state['soc_min']:.1f}%"
         
     # SCENARIO 6: Protezione Cicli Batteria
     batt_protection_cycles = get_float(entities["batt_protection_cycles"], 0)
@@ -238,22 +278,43 @@ def calculate_target_amps(state, cfg):
     params = cfg["params"]
     available_power = 0
     pause_reason = None
+    available_amp = 0.0  
+    
+    # 🆕 CONTROLLO EMERGENZA EV (FORZATURA 6A)
+    is_emergency = state["ev_soc"] < state["ev_soc_emergenza"] and state["ev_soc"] < 99.0
     
     # SCENARIO 8: Sole Basso (Pre-requisito)
     if state["sun_elevation"] < state["elevation_limit"] and not state["is_rising"]:
         log_debug(f"[Wallbox] ⏸️ SCENARIO 8: Sole basso in discesa ({state['sun_elevation']:.1f}° < {state['elevation_limit']:.1f}°).")
         pause_reason = f"Sole basso in discesa ({state['sun_elevation']:.1f}°)"
+
+    # 🆕 SCENARIO 8a (Logica di Emergenza EV)
+    # Se l'emergenza è attiva, forza 6A e salta tutti gli altri calcoli di potenza (9, 10, 11, 12)
+    elif is_emergency:
+        log_always(f"[Wallbox] ⚡ SCENARIO 8a (EMERGENZA EV): Forza carica minima ({state['min_amp']}A) per EV SOC basso.")
+        available_power = state["min_wallbox_power"]
+        # Questo valore (es. 1350W) andrà direttamente al calcolo finale (SCENARIO 13)
         
     # SCENARIO 9: Gestione Scarica Batteria Eccessiva (Riduzione Dinamica)
-    elif not state["forzacharge"] and state["batt_power"] > (state["batt_max_discharge"] * params["batt_discharge_margin"]):
+    # 🐞 FIX CRITICO: Aggiunta condizione per bypassare lo scenario se c'è surplus FV significativo
+    # e la batteria non è critica (evita la reazione alla scarica anomala del Deye quando c'è eccedenza).
+    elif not state["forzacharge"] and \
+         state["batt_power"] > (state["batt_max_discharge"] * params["batt_discharge_margin"]) and \
+         (state["pv_excess"] < 100 or state["soc_attuale"] < state["soc_priority"]): # <-- NUOVA CONDIZIONE
+        
         discharge_limit = state["batt_max_discharge"] * params["batt_discharge_margin"]
         over_discharge_watts = state["batt_power"] - discharge_limit
+        
+        # Tentativo di ridurre la Wallbox (assumendo che fosse la Wallbox la causa della scarica)
         new_target_power = state["wallbox_power"] - over_discharge_watts - 50 # 50W buffer
         
-        log_debug(f"[Wallbox] 📉 SCENARIO 9: Scarica batteria eccessiva ({state['batt_power']:.1f}W > {discharge_limit:.1f}W). Riduco PW a {int(new_target_power)}W.")
-        available_power = new_target_power
+        # Evita che la potenza target diventi negativa
+        available_power = max(0, new_target_power)
+
+        log_debug(f"[Wallbox] 📉 SCENARIO 9: Scarica batteria eccessiva ({state['batt_power']:.1f}W > {discharge_limit:.1f}W). Riduco PW a {available_power:.1f}W.")
+        # available_power è già stato impostato qui sopra
         
-    # SCENARIO 10-13: Logiche di Calcolo Potenza
+    # SCENARIO 10-13: Logiche di Calcolo Potenza (Blocco Logica Eco)
     else:
         # Aggiunta dello Stimolo Inverter Secondario
         pv_excess_with_stimulus = state["pv_excess"]
@@ -325,7 +386,8 @@ def calculate_target_amps(state, cfg):
     if clamped_amp < state["min_amp"]:
         clamped_amp = 0
         if not pause_reason:
-             pause_reason = "Corrente calcolata troppo bassa"
+             # 🚀 MIGLIORIA: Uso available_power per una diagnostica più precisa.
+             pause_reason = f"Potenza calcolata troppo bassa ({available_power:.1f}W)" 
              log_debug(f"[Wallbox] ⏸️ SCENARIO 14: Corrente calcolata ({available_amp:.1f}A) < Min_Amp ({state['min_amp']}A). Messa in pausa.")
 
     return clamped_amp, pause_reason
@@ -353,6 +415,7 @@ def apply_wallbox_state(target_amps, pause_reason, last_amp, cfg):
     # SCENARIO 17: Applicazione Carica
     log_debug(f"[Wallbox] 🚀 SCENARIO 17: Applico Carica. Corrente finale impostata a {final_amps}A. Set Mode: 'normal'.")
     # ⚡ Chiamate non bloccanti
+    # 🐞 HOTFIX CRITICO APPLICATO
     call_service("number", "set_value", {"entity_id": entities["wallbox_set_current"], "value": final_amps})
     call_service("input_number", "set_value", {"entity_id": entities["last_wallbox_current"], "value": final_amps})
     call_service("select", "select_option", {"entity_id": entities["wallbox_set_mode"], "option": "normal"})
@@ -363,7 +426,7 @@ def apply_wallbox_state(target_amps, pause_reason, last_amp, cfg):
 DEBUG_MODE = get_str(CONFIG["entities"]["debug_mode"]) == "on"
 # ⚡ Raccolgo il timestamp di inizio per il calcolo della durata
 script_start_timestamp = get_float(CONFIG["entities"]["current_timestamp"], 0)
-log_debug(f"[Wallbox] Script AVVIATO v2025.10.29 - Debug: {'ATTIVO' if DEBUG_MODE else 'DISATTIVO'}")
+log_debug(f"[Wallbox] Script AVVIATO v2025.10.35 - Debug: {'ATTIVO' if DEBUG_MODE else 'DISATTIVO'}")
 final_amps, pause_mode, pause_reason, state_data = 0, True, "", {}
 
 # CONTROLLO PRELIMINARE: Connettore
@@ -388,6 +451,14 @@ else:
             # ⚡ Chiamata non bloccante
             call_service("select", "select_option", {"entity_id": CONFIG["entities"]["wallbox_set_mode"], "option": "paused"})
             log_always(f"[Wallbox] 🔴 Controllo Preliminare: Voltaggio Critico. ({state_data.get('voltage', 0)}V).")
+            
+        # 🚨 CONTROLLO CRITICO: GRID FALLITA e BATTERIA BASSA
+        elif not state_data.get("grid_present", True) and state_data.get("soc_attuale", 100) < state_data.get("soc_min", 0):
+            pause_reason = f"🛑 ERRORE GRID: Grid assente E SOC ({state_data.get('soc_attuale'):.1f}%) sotto min ({state_data.get('soc_min'):.1f}%)."
+            # ⚡ Chiamata non bloccante
+            call_service("select", "select_option", {"entity_id": CONFIG["entities"]["wallbox_set_mode"], "option": "paused"})
+            log_always(f"[Wallbox] 🛑 Controllo Preliminare: Grid Assente e Batt. Bassa. Priorità al carico domestico.")
+            
         else:
             # ESECUZIONE LOGICHE PRINCIPALI
             pause_reason_from_rules = determine_pause_reason(state_data, CONFIG)
@@ -414,27 +485,28 @@ else:
     final_icon = "mdi:pause" if pause_mode else "mdi:ev-station"
 
 attributes = {
-    "pv_power": round(state_data.get("pv_power", 0), 1),
-    "pv_primary": round(state_data.get("pv_primary", 0), 1),
-    "pv_secondary": round(state_data.get("pv_secondary", 0), 1),
-    "secondary_active": state_data.get("inverter_secondary_active", False),
-    "pv_potential_secondary": round(state_data.get("pv_potential_secondary", 0), 1),
-    "home_power": round(state_data.get("home_power", 0), 1),
-    "pv_excess": round(state_data.get("pv_excess", 0), 1),
-    "batt_power": round(state_data.get("batt_power", 0), 1),
-    "soc_attuale": round(state_data.get("soc_attuale", 0), 1),
-    "decision_amp": final_amps,
-    "pause_mode": pause_mode,
-    "pause_reason": pause_reason,
-    "last_update": script_end_iso,
-    "script_duration": round(execution_time, 3),
-    "friendly_name": "Wallbox Status",
+    "Rete Elettrica": "Connessa" if state_data.get("grid_present", True) else "Disconnessa",
+    "Power FTV": round(state_data.get("pv_power", 0), 1),
+    "Deye Stringa EST": round(state_data.get("pv_primary", 0), 1),
+    "Deye Stringa OVEST": round(state_data.get("pv_secondary", 0), 1),
+    "Inverter Genius": state_data.get("inverter_secondary_active", False),
+    "Genius PW Prevista": round(state_data.get("pv_potential_secondary", 0), 1),
+    "PW Casa": round(state_data.get("home_power", 0), 1),
+    "PW Solare Eccesso": round(state_data.get("pv_excess", 0), 1),
+    "PW Batteria": round(state_data.get("batt_power", 0), 1),
+    "SOC Casa": round(state_data.get("soc_attuale", 0), 1),
+    "Amp. -> Wallbox": final_amps,
+    "Pausa": "NO" if state_data.get("pause_mode", False) else "SI",
+    "Ragione Pausa": pause_reason,
+    "Ult. Aggiornamento": script_end_iso,
+    "Durata Script": round(execution_time, 3),
     "icon": final_icon,
-    "info": "v2025.10.29"
+    "Nome Sensore": "Wallbox Status",
+    "info": "v2025.10.35"
 }
 try:
     hass.states.set(CONFIG["entities"]["status_sensor"], final_state_str, attributes)
 except Exception as e:
-    log_always(f"[Wallbox] Errore critico aggiornamento sensore di stato: {e}")
+    log_always(f"[Wallbox] Errore critico nell'aggiornamento del sensore di stato: {e}")
 
 log_debug("[Wallbox] Script TERMINATO")
