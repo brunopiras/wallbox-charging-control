@@ -1,5 +1,6 @@
 <p align="center">
   <img src="./image/home-assistant-logo.png" alt="Home Assistant Logo" width="150">
+  <img src="./image/silla.png" alt="Wallbox Image Logo" width="150">
 </p>
 <p align="center">
   <img src="./image/solar.png" alt="Impianto Solare" width="500">
