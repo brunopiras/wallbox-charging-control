@@ -11,7 +11,7 @@
 
 
 **Autore:** bpirasATgmailDOTcom
-**Versione:** v2025.10.35
+**Versione:** 2025.11.0
 
 **Attenzione!!** Consiglio l'utilizzo ad utenti "ESPERTI"
 
@@ -36,8 +36,12 @@ Si consiglia di eseguirlo tramite un'automazione di Home Assistant a intervalli 
 - **Modalità Debug**: Include una modalità di debug per facilitare la risoluzione dei problemi.
 
 ## News
-Modifiche 30/10/2025:
+Modifiche 01/11/2025:
+- 🧹 REFACTOR: Rivista completamente la struttura dello script e applicata una sintassi più leggibile e manutentabile.
+- 🆕 FEATURE: Inserite notifiche permanenti su Home Assistant per la EV Emergency e l'assenza di rete elettrica.
+- 🚀 MIGLIORIA: Varie.
 
+Modifiche 30/10/2025:
 - 🆕 FEATURE: **Implementato Margine Dinamico di SOC (Emergenza EV)**. 
   Se l'EV SOC scende sotto una soglia critica (`input_number.ev_soc_emergenza`), 
   lo script forza la carica minima (6A) e ignora le pause (Pausa Oraria e SOC Batteria Casa Critico).
@@ -74,7 +78,8 @@ Modifiche 27/10/2025:
 1.  **Copia lo Script**: Inserisci lo script `wallbox_charging_control.py` nella cartella `/config/python_scripts/` della tua installazione di Home Assistant.
 2.  **Crea gli Helper**: In Home Assistant, crea tutti gli `input_boolean`, `input_number`, e `input_datetime` necessari, definiti nella sezione `CONFIG` dello script. Questi sono usati per controllare e monitorare il comportamento dello script (Se vuoi, puoi usare il file `package_wallbox.yaml` per crearli automaticamente da rinominare e inserire nella cartella packages).
 3.  **Crea i Sensori Template**: Crea eventuali sensori template richiesti elencati nella sezione `CONFIG` (se usi il file package, Home Assistant li crea da solo).
-4.  **Automatizza l'Esecuzione**: Crea una nuova automazione in Home Assistant che chiami il servizio `python_script.wallbox_charging_control` a intervalli regolari.
+4.  **Crea la cartella packages (se già non esistente) dove copiare al suo interno il file package_wallbox.yaml.example e rinominare in  package_wallbox.yaml (riavviare Home Hassistant al termine).
+5.  **Automatizza l'Esecuzione**: Crea una nuova automazione in Home Assistant che chiami il servizio `python_script.wallbox_charging_control` a intervalli regolari (di solito 45 sec sono sufficienti).
 
     ```yaml
     alias: "Run Wallbox Charging Control"
